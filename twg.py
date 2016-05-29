@@ -1,41 +1,85 @@
 import random
 import itertools
 
+
+colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0),
+          (255, 0, 255), (255, 255, 0), (0, 255, 255)]
+
 class Buildings:
     MARKET_INCOME = 3
+    MARKET_COST = 15
+    FORT_COST = 20
 
     def __init__(self, fort_lvl = 0, market_lvl = 0):
         self.fort_lvl = fort_lvl
         self.market_lvl = market_lvl
 
     def get_market_income(self):
-        return MARKET_INCOME * market_lvl
+        return self.MARKET_INCOME * self.market_lvl
+
+    def get_market_cost(self):
+        return self.MARKET_COST * self.market_lvl + self.MARKET_COST
+
+    def get_fort_cost(self):
+        return self.FORT_COST * self.fort_lvl + self.FORT_COST
 
 
 class Territory:
     BASE_INCOME = 1
     BASE_CAPTURE_TIME = 3
 
-    def __init__(self, buildings, army):
+    def __init__(self, buildings, owner = None):
         self.buildings = buildings
-        self.army = army
+        self.owner = owner
 
     def get_income(self):
-        return BASE_INCOME + self.buildings.get_market_income()
+        return self.BASE_INCOME + self.buildings.get_market_income()
+
+    def can_upgr_market(self):
+        if self.owner:
+            return self.owner.gold >= self.buildings.get_market_cost()
+        else:
+            return False
+
+    def can_upgr_fort(self):
+        if self.owner:
+            return self.owner.gold >= self.buildings.get_fort_cost()
+        else:
+            return False
+
+    def upgr_market(self):
+        self.owner.gold = self.owner.gold - self.buildings.get_market_cost()
+        self.buildings.market_lvl = self.buildings.market_lvl + 1
+
+    def upgr_fort(self):
+        self.owner.gold = self.owner.gold - self.buildings.get_fort_cost()
+        self.buildings.fort_lvl = self.buildings.fort_lvl + 1
 
 
 class Map:
-    def __init__(self, dim = 10, players = 2):
+    def __init__(self, players, dim = 10):
         self.dim = dim
         self.players = players
         self.generate_map()
 
     def generate_map(self):
         self.map = []
+        temp_coords = []
         for i in range(self.dim):
             self.map.append([])
-            for _ in range(self.dim):
-                self.map[i].append(Territory())
+            temp_coords.append([])
+            for j in range(self.dim):
+                self.map[i].append(Territory(Buildings()))
+                temp_coords[i].append((i, j))
+        temp_coords = list(itertools.chain(*temp_coords))
+        random.shuffle(temp_coords)
+        random.shuffle(temp_coords)
+        for i in range(len(self.players)):
+            cur_x = temp_coords[i][0]
+            cur_y = temp_coords[i][1]
+            self.map[cur_x][cur_y].owner = self.players[i]
+            self.players[i].territories.append(self.map[cur_x][cur_y])
+            
 
 
 class Unit:
@@ -70,8 +114,10 @@ class Cavlary(Unit):
 
 
 class Army:
-    def __init__(self, inf, cav):
+    def __init__(self, inf, cav, pos_x, pos_y):
         self.troops = (inf, cav)
+        self.pos_x = pos_x
+        self.pos_y = pos_y
 
     def fight(self, other):
         damage_done = self.get_damage()
@@ -94,10 +140,54 @@ class Army:
         cav_morale = self.troops[1].morale * self.troops[1].ammount
         return (inf_morale + cav_morale) / self.get_ammount()
 
+    def move(self, x, y):
+        x_change = abs(self.pos_x - x)
+        y_change = abs(self.pos_y - y)
+        if (x_change + y_change) == 1:
+            self.pos_x = x
+            self.pos_y = y
+
+    def get_maintenance(self):
+        pass
+
 
 class Player:
-    pass
+    STARTING_GOLD = 30
+
+    def __init__(self, name, color, territories = [], armies = []):
+        self.name = name
+        self.territories = territories
+        self.armies = armies
+        self.gold = self.STARTING_GOLD
+        self.color = color
+
+    def play_turn(self):
+        pass
+
+    def get_income(self):
+        for ter in self.territories:
+            self.gold = self.gold + ter.get_income()
+        for army in self.armies:
+            self.gold = self.gold - army.get_maintenance()
+
+    def hire_cav(self, ammount):
+        pass
 
 
 class Game:
-    pass
+    def __init__(self, cnt_players, mode):
+        random.shuffle(colors)
+        self.players = []
+        for i in range(cnt_players):
+            self.players.append(Player('Player {}'.format(i), colors[i]))
+        self.map = Map(self.players)
+        self.map.generate_map()
+        self.turn = 1
+        #self.start(mode)
+
+    def start(self, mode):
+        while(len(self.players) > 1 and self.turn != mode ):
+            for player in self.players:
+                player.get_income()
+                player.play_turn()
+            self.turn = self.turn + 1
