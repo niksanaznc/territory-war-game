@@ -30,6 +30,10 @@ class Player:
         self.gold = self.gold + self.income()
 
     def get_armies_maint(self):
+        '''
+        Returns total army maintenance in a tuple containing
+        maintenance of all infantry and cavlary.
+        '''
         inf = 0
         cav = 0
         for army in self.armies:
@@ -43,6 +47,11 @@ class Player:
         self.gold = self.gold - (maint[0] + maint[1])
 
     def hire_inf(self, x, y):
+        '''
+        Hires a single stack of infantry and places it on [x,y] position.
+        If there is already player's army there, it joins both armies.
+        The new infantry stack has 0 morale.
+        '''
         self.gold = self.gold - self.inf_price
         inf = Infantry(*self.inf_stats)
         cav = Cavlary(*self.cav_stats)
@@ -57,6 +66,11 @@ class Player:
         return army
 
     def hire_cav(self, x, y):
+        '''
+        Hires a single stack of cavlary and places it on [x,y] position.
+        If there is already player's army there, it joins both armies.
+        The new cavlary stack has 0 morale.
+        '''
         self.gold = self.gold - self.cav_price
         inf = Infantry(*self.inf_stats)
         inf.ammount = 0
@@ -77,6 +91,9 @@ class Player:
         return self.gold >= self.cav_price
 
     def reset_armies(self):
+        '''
+        Resets the armies moved flag when player's turn ends.
+        '''
         for army in self.armies:
             army.moved = False
             army.recover_morale()
@@ -115,6 +132,9 @@ class Player:
         return can_call
 
     def upgr_cav(self):
+        '''
+        Upgrades player's cavlary units in all armies.
+        '''
         attack = self.cav_stats[0] + 1
         defence = self.cav_stats[1] + 1
         morale = self.cav_stats[3] + 1
@@ -127,6 +147,9 @@ class Player:
         self.cav_price = self.cav_price + self.cav_price // 3
 
     def upgr_inf(self):
+        '''
+        Upgrades player's infantry units in all armies.
+        '''
         attack = self.inf_stats[0] + 1
         defence = self.inf_stats[1] + 1
         morale = self.inf_stats[3] + 1
@@ -144,8 +167,16 @@ class Player:
     def can_upgr_inf(self):
         return self.gold >= self.inf_price * 2
 
+    def is_eliminated(self):
+        return self.armies == [] and self.territories == []
+
 
 class Offer:
+    '''
+    Offer class for offers between players during the game. Has methods for
+    alliance, peace and call to arms. Returns a message to the sender if
+    the receiver of the offer accepts if.
+    '''
     def __init__(self, type, receiver, sender, gold=0, msg=None):
         self.type = type
         self.sender = sender
@@ -187,6 +218,6 @@ class Offer:
         self.receiver.gold = self.receiver.gold + self.gold
         self.sender.gold = self.sender.gold - self.gold
 
-    def return_message(self, msg, tgt):
-        offer = Offer("message", tgt, self.receiver, 0, msg)
-        tgt.offers.append(offer)
+    def return_message(self, msg, target):
+        offer = Offer("message", target, self.receiver, 0, msg)
+        target.offers.append(offer)

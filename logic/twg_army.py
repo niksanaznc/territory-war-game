@@ -1,4 +1,8 @@
 class Unit:
+    '''
+    Base abstract class Unit must be inherited by all units.
+    '''
+
     def __init__(self, att, defence, ammount, morale, maint):
         self.attack = att
         self.defence = defence
@@ -7,6 +11,9 @@ class Unit:
         self.maint = maint
 
     def receive_damage(self, damage):
+        '''
+        Unit receives damage and returns damage left if there is such.
+        '''
         units_left = self.ammount - int(damage / self.defence)
         if units_left <= 0:
             self.ammount = 0
@@ -41,6 +48,11 @@ class Army:
         self.morale = self.get_max_morale()
 
     def fight(self, other, territory):
+        '''
+        Main method for fighting with another army. Territory is the
+        territory where the armies fight. The fight continues until
+        one of the armies cannot fight anymore aka is defeated.
+        '''
         if self.owner in other.owner.allies or self.owner is other.owner:
             return None
         duration = 0
@@ -73,6 +85,9 @@ class Army:
         return not self.killed() and self.morale > 0
 
     def get_damage(self):
+        '''
+        Returns total damage that the army inflicts at the given moment.
+        '''
         inf_damage = self.troops[0].attack * self.troops[0].ammount
         cav_damage = self.troops[1].attack * self.troops[1].ammount
         return inf_damage + cav_damage
@@ -91,6 +106,10 @@ class Army:
             return 0
 
     def get_maintenance(self):
+        '''
+        Return tuple with the maintenance cost of the infantry
+        and the cavlary of the army.
+        '''
         inf_stacks = self.troops[0].ammount // 1000
         cav_stacks = self.troops[1].ammount // 1000
         if self.troops[0].ammount % 1000 > 0:
@@ -119,6 +138,11 @@ class Army:
                 self.join(army)
 
     def lose_morale(self, other, damage, duration_penalty):
+        '''
+        Method used for morale loss during battle. Other is the other army,
+        damage is the damage received and duration penalty is the attrition
+        during the long battles.
+        '''
         number_advantage = self.get_ammount() / other.get_ammount()
         army_health = self.troops[0].get_health() + self.troops[1].get_health()
         deaths_penalty = (army_health - damage) / army_health
@@ -132,12 +156,20 @@ class Army:
             self.morale = self.get_max_morale()
 
     def recover_morale(self):
+        '''
+        Recovery of the morale every turn the army is not fighting.
+        Recover rate is 30%.
+        '''
         max_morale = self.get_max_morale()
         self.morale = self.morale + max_morale * 3 / 10
         if self.morale > max_morale:
             self.morale = max_morale
 
     def split(self, left):
+        '''
+        Splits the army in two, where the ammount of the second army is
+        left[0] for infantry and left[1] for cavlary.
+        '''
         infA = self.troops[0].ammount - left[0]
         cavA = self.troops[1].ammount - left[1]
         self.troops[0].ammount = left[0]
@@ -147,6 +179,7 @@ class Army:
         infantry = Infantry(inf.attack, inf.defence, infA, inf.morale)
         cavlary = Cavlary(cav.attack, cav.defence, cavA, cav.morale)
         army = Army(infantry, cavlary, self.pos_x, self.pos_y, self.owner)
+        army.morale = self.morale
         if not army.killed():
             self.owner.armies.append(army)
         if self.killed():
@@ -154,6 +187,11 @@ class Army:
         return army
 
     def join(self, other):
+        '''
+        Joins two armies together. Morale of the new army is set to the
+        average morale of both. The new army is the current army while
+        the other is removed.
+        '''
         self_morale = self.get_ammount() * self.morale
         other_morale = other.get_ammount() * other.morale
         other_inf = other.troops[0].ammount
@@ -164,7 +202,8 @@ class Army:
         self.morale = round(morale / self.get_ammount(), 2)
         other.troops[0].ammount = 0
         other.troops[1].ammount = 0
-        self.owner.armies.remove(other)
+        if other in self.owner.armies:
+            self.owner.armies.remove(other)
 
     def killed(self):
         return self.troops[0].ammount + self.troops[1].ammount <= 0

@@ -10,12 +10,15 @@ import time
 
 
 class MapWindow(QWidget):
+    '''
+    Main class of the game GUI.
+    '''
     def __init__(self):
         super().__init__()
         self.setAcceptDrops(True)
-        self.game = Game(4)
+        self.game = Game(4)  # Make game with 4 players
 
-        self.tf = TurnFrame()
+        self.sig = Signals()
         endTurnButton = QPushButton("&EndTurn", self)
         endTurnButton.clicked.connect(self.endTurn)
         endTurnButton.move(1260, 720)
@@ -29,8 +32,8 @@ class MapWindow(QWidget):
         turnTxt.setFont(turnFont)
         turnTxt.move(20, 720)
 
-        self.tf.turnChanged.connect(turnLcd.display)
-        self.tf.turnChanged.emit(self.game.turn)
+        self.sig.turnChanged.connect(turnLcd.display)
+        self.sig.turnChanged.emit(self.game.turn)
 
         quitB = QPushButton("&Quit", self)
         quitB.clicked.connect(self.quit)
@@ -52,17 +55,21 @@ class MapWindow(QWidget):
         thread.start()
 
     def endTurn(self):
+        '''
+        Method to end the current player's turn and refresh all
+        the interface to show the next active player's info.
+        '''
         self.game.player.end_turn = True
         time.sleep(1)
-        self.tf.turnChanged.emit(self.game.turn)
+        self.sig.turnChanged.emit(self.game.turn)
         self.player.setText(self.game.player.name)
         color = QColor(*self.game.player.color).name()
         self.player.adjustSize()
         self.player.setStyleSheet("QWidget { color: %s }" % color)
-        self.tf.goldChanged.emit(self.game.player.gold)
-        self.tf.incomeChanged.emit(self.game.player.income())
+        self.sig.goldChanged.emit(self.game.player.gold)
+        self.sig.incomeChanged.emit(self.game.player.income())
         maint = self.game.player.get_armies_maint()
-        self.tf.maintChanged.emit(maint[0] + maint[1])
+        self.sig.maintChanged.emit(maint[0] + maint[1])
         for row in self.coords:
             for ter in row:
                 ter.update()
@@ -71,6 +78,10 @@ class MapWindow(QWidget):
         self.showOffers()
 
     def makeMap(self, width, height, n):
+        '''
+        Generates the graphical map, from the game's map. Sets events
+        and connects signals for the territories.
+        '''
         for i in range(n):
             self.coords.append([])
             for j in range(n):
@@ -94,13 +105,15 @@ class MapWindow(QWidget):
 
     def showTerritoryDialog(self, event):
         territory_dialog = TerritoryDialog(self, event)
-
-        territory_dialog.setWindowTitle("Territory Name Here")
+        territory_dialog.setWindowTitle("Territory")
         territory_dialog.setWindowModality(Qt.ApplicationModal)
         territory_dialog.setFixedSize(280, 240)
         territory_dialog.exec_()
 
     def showPlayerInfo(self):
+        '''
+        Displays player name label.
+        '''
         nameLbl = QLabel('Player Name:', self)
         nameLbl.move(10, 10)
         font = QFont()
@@ -113,6 +126,9 @@ class MapWindow(QWidget):
         self.addMaintInfo(font)
 
     def addGoldInfo(self, font):
+        '''
+        Adds gold LCDNumber and connects it with the correct signal.
+        '''
         goldLbl = QLabel('Gold:', self)
         goldLbl.move(300, 10)
         goldLbl.setFont(font)
@@ -120,10 +136,13 @@ class MapWindow(QWidget):
         goldLcd.move(360, 0)
         goldLcd.setFrameShape(QFrame.NoFrame)
         goldLcd.resize(65, 40)
-        self.tf.goldChanged.connect(goldLcd.display)
-        self.tf.goldChanged.emit(self.game.player.gold)
+        self.sig.goldChanged.connect(goldLcd.display)
+        self.sig.goldChanged.emit(self.game.player.gold)
 
     def addPlayerInfo(self, font):
+        '''
+        Shows current player's name and adds event for changing player's name.
+        '''
         self.player = QLabel(self.game.player.name, self)
         color = QColor(*self.game.player.color).name()
         self.player.setGeometry(150, 10, 40, 30)
@@ -133,6 +152,9 @@ class MapWindow(QWidget):
         self.player.mouseReleaseEvent = self.changePlayerName
 
     def addIncomeInfo(self, font):
+        '''
+        Adds the income LCDNumber and connects it with the correct signals.
+        '''
         incomeLbl = QLabel("Income:", self)
         incomeLbl.setFont(font)
         incomeLbl.move(460, 10)
@@ -140,10 +162,13 @@ class MapWindow(QWidget):
         incomeLcd.move(530, 0)
         incomeLcd.setFrameShape(QFrame.NoFrame)
         incomeLcd.resize(60, 40)
-        self.tf.incomeChanged.connect(incomeLcd.display)
-        self.tf.incomeChanged.emit(self.game.player.income())
+        self.sig.incomeChanged.connect(incomeLcd.display)
+        self.sig.incomeChanged.emit(self.game.player.income())
 
     def addMaintInfo(self, font):
+        '''
+        Adds maintenance QLCDNumber and connects it with the correct signals.
+        '''
         maintLbl = QLabel("Total maintenance:", self)
         maintLbl.move(620, 10)
         maintLbl.setFont(font)
@@ -151,11 +176,14 @@ class MapWindow(QWidget):
         maintLcd.move(840, 7)
         maintLcd.setFrameShape(QFrame.NoFrame)
         maintLcd.resize(50, 30)
-        self.tf.maintChanged.connect(maintLcd.display)
+        self.sig.maintChanged.connect(maintLcd.display)
         maint = self.game.player.get_armies_maint()
-        self.tf.maintChanged.emit(maint[0] + maint[1])
+        self.sig.maintChanged.emit(maint[0] + maint[1])
 
     def addDiplomacyLabels(self):
+        '''
+        Displays diplomatic labels for every player.
+        '''
         y = 100
         font = QFont()
         font.setPointSize(17)
@@ -173,10 +201,16 @@ class MapWindow(QWidget):
         diplomacy.setFont(QFont(font.family(), 16, 200, True))
 
     def updateDiploLabels(self):
+        '''
+        Updates diplomatic label's texts when any player's name is changed.
+        '''
         for i in range(len(self.game.players)):
             self.diploLbls[i].setText(self.game.players[i].name)
 
     def changePlayerName(self, event):
+        '''
+        Method that calls input dialog to change player's name.
+        '''
         input = QInputDialog(self)
         input.setLabelText("Name")
         input.setWindowTitle("Change name")
@@ -187,6 +221,9 @@ class MapWindow(QWidget):
             self.updateDiploLabels()
 
     def showArmies(self):
+        '''
+        Initially adds players' armies in the GUI.
+        '''
         self.armies = []
         for player in self.game.players:
             for army in player.armies:
@@ -197,6 +234,9 @@ class MapWindow(QWidget):
         self.addArmyButtons()
 
     def raisePlayerArmies(self, player):
+        '''
+        Raises player's armies to the top of the map layer.
+        '''
         for army in self.armies:
             if army.army.owner is player:
                 army.raise_()
@@ -204,6 +244,10 @@ class MapWindow(QWidget):
                 army.close()
 
     def addArmyButtons(self):
+        '''
+        Adds buttons for upgrading of the player's units and connects these
+        buttons to the responsible methods.
+        '''
         infPrice = self.game.player.inf_price * 2
         self.infB = QPushButton("Upgrade infantry: {}".format(infPrice), self)
         self.infB.move(0, 100)
@@ -216,18 +260,27 @@ class MapWindow(QWidget):
         self.cavB.clicked.connect(self.upgrCav)
 
     def upgrCav(self, event):
+        '''
+        Upgrades player's cavlary units.
+        '''
         player = self.game.player
         player.upgr_cav()
         self.updateButtons()
-        self.tf.goldChanged.emit(player.gold)
+        self.sig.goldChanged.emit(player.gold)
 
     def upgrInf(self, event):
+        '''
+        Upgrades player's infantry units.
+        '''
         player = self.game.player
         player.upgr_inf()
         self.updateButtons()
-        self.tf.goldChanged.emit(player.gold)
+        self.sig.goldChanged.emit(player.gold)
 
     def updateButtons(self):
+        '''
+        Updates unit upgrade buttons with the new upgrade prices.
+        '''
         player = self.game.player
         self.infB.setText("Upgrade infantry: {}".format(player.inf_price * 2))
         self.cavB.setText("Upgrade cavlary: {}".format(player.cav_price * 2))
@@ -235,11 +288,14 @@ class MapWindow(QWidget):
         self.infB.setEnabled(player.can_upgr_inf())
 
     def showOffers(self):
+        '''
+        Displays dialogs with the pending offers of the current player.
+        '''
         for offer in self.game.player.offers:
             offerDialog = OfferDialog(offer)
             if offerDialog.exec_() == 1:
                 offer.accept()
-                self.tf.goldChanged.emit(self.game.player.gold)
+                self.sig.goldChanged.emit(self.game.player.gold)
         self.game.player.offers = []
 
     def quit(self):
@@ -251,6 +307,11 @@ class MapWindow(QWidget):
 
 
 class DiploLabel(QLabel):
+    '''
+    Class for diplomatic labels. Main reason to make it is adding
+    the mouse clicked event to these labels so that they open the
+    correct diplomacy windows when clicked.
+    '''
     def __init__(self, text, parent):
         super().__init__(text, parent)
 
@@ -268,6 +329,9 @@ class DiploLabel(QLabel):
 
 
 class DiploDialog(QDialog):
+    '''
+    Diplomatic dialog.
+    '''
     def __init__(self, active, player):
         super().__init__()
         self.active = active
@@ -280,6 +344,10 @@ class DiploDialog(QDialog):
         self.addActions()
 
     def addActions(self):
+        '''
+        Adds and places the labels and buttons for the diplomatic actions
+        possible in the game.
+        '''
         actions = QLabel("Actions", self)
         actions.move(0, 80)
         actions.setFont(self.qfont)
@@ -306,6 +374,9 @@ class DiploDialog(QDialog):
         self.updateEnables()
 
     def addInfo(self):
+        '''
+        Adds allies and enemies labels.
+        '''
         self.qfont = QFont()
         self.qfont.setPointSize(13)
         allies = QLabel("Allies", self)
@@ -317,6 +388,10 @@ class DiploDialog(QDialog):
         self.addPlayers(self.player.enemies, 60, self.allies)
 
     def addPlayers(self, players, y, labels):
+        '''
+        Displays labels for every player in players and positions them at
+        y coordinate y.
+        '''
         x = 0
         for player in players:
             lbl = QLabel(player.name, self)
@@ -328,12 +403,18 @@ class DiploDialog(QDialog):
             labels.append(lbl)
 
     def updateEnemies(self):
+        '''
+        Updates enemies labels.
+        '''
         x = 0
         for label in self.enemies:
             label.move(x, 60)
             x = x + 100
 
     def removeLabel(self, labels, name):
+        '''
+        Remove labels with text name from labels.
+        '''
         for label in labels:
             if label.text() == name:
                 for_del = label
@@ -383,7 +464,11 @@ class DiploDialog(QDialog):
             self.callToArms.setEnabled(False)
 
     def execInput(self):
+        '''
+        Executes the input dialog for adding gold in the offer.
+        '''
         input = QInputDialog()
+        input.setWindowTitle("Gold ammount")
         msg = "Enter negative number"
         msg = msg + " to offer and positive number to demand gold"
         input.setLabelText(msg)
@@ -394,6 +479,10 @@ class DiploDialog(QDialog):
         return result
 
     def updateEnables(self):
+        '''
+        Updates the enables of all diplomatic actions
+        in the diplomatic window.
+        '''
         notActive = self.player is not self.active
         allyEnabled = self.player not in self.active.allies and notActive
         allyEnabled = allyEnabled and self.player not in self.active.enemies
@@ -406,9 +495,13 @@ class DiploDialog(QDialog):
 
 
 class OfferDialog(QDialog):
+    '''
+    Diplomatic offer dialog. Shows every time a player receives an offer.
+    '''
     def __init__(self, offer):
         super().__init__()
         self.offer = offer
+        self.setWindowTitle("Diplomatic message")
         self.addLabels()
         if self.offer.type == "message":
             ok = QPushButton("OK", self)
@@ -446,7 +539,10 @@ class OfferDialog(QDialog):
         decline.clicked.connect(self.reject)
 
 
-class TurnFrame(QFrame):
+class Signals(QFrame):
+    '''
+    Dummie class for all the signals needed in MapWindow.
+    '''
     turnChanged = pyqtSignal(int)
     goldChanged = pyqtSignal(float)
     incomeChanged = pyqtSignal(int)
@@ -457,6 +553,9 @@ class TurnFrame(QFrame):
 
 
 class TerritorySquare(QFrame):
+    '''
+    Class for a territory on the map.
+    '''
     incomeChanged = pyqtSignal(int)
     marketUpgr = pyqtSignal(int)
     fortUpgr = pyqtSignal(int)
@@ -466,11 +565,18 @@ class TerritorySquare(QFrame):
         self.ter = ter
 
     def calcCenter(self):
+        '''
+        Calculates the center coordinates of the territory.
+        Needed for the placing of the armies on the territories.
+        '''
         center_x = self.pos().x() + self.width() // 2
         center_y = self.pos().y() + self.height() // 2
         self.center = (center_x, center_y)
 
     def update(self):
+        '''
+        Updates the colour of the territory.
+        '''
         if self.ter.owner:
             color = self.ter.owner.color
             bgcolor = "QWidget { background-color: %s }"
@@ -478,6 +584,9 @@ class TerritorySquare(QFrame):
 
 
 class TerritoryDialog(QDialog):
+    '''
+    Dialog showed every time a territory is clicked.
+    '''
     def __init__(self, map, event):
         super().__init__()
         self.mapW = map
@@ -559,6 +668,9 @@ class TerritoryDialog(QDialog):
         self.square.marketUpgr.connect(marketLCD.display)
 
     def upgrFort(self, event):
+        '''
+        Method to upgrade the fort of the territory.
+        '''
         player = self.mapW.game.player
         ter = self.square.ter
         ter.upgr_fort()
@@ -566,9 +678,12 @@ class TerritoryDialog(QDialog):
         self.fortUpgrB.setText("Upgrade fort: {}".format(cost))
         self.updateEnables()
         self.square.fortUpgr.emit(ter.buildings.fort_lvl)
-        self.mapW.tf.goldChanged.emit(player.gold)
+        self.mapW.sig.goldChanged.emit(player.gold)
 
     def upgrMarket(self, event):
+        '''
+        Method to upgrade the market of the territory.
+        '''
         player = self.mapW.game.player
         ter = self.square.ter
         ter.upgr_market()
@@ -577,18 +692,22 @@ class TerritoryDialog(QDialog):
         self.updateEnables()
         self.square.marketUpgr.emit(ter.buildings.market_lvl)
         self.square.incomeChanged.emit(ter.get_income())
-        self.mapW.tf.goldChanged.emit(player.gold)
-        self.mapW.tf.incomeChanged.emit(player.income())
+        self.mapW.sig.goldChanged.emit(player.gold)
+        self.mapW.sig.incomeChanged.emit(player.income())
 
     def hireCav(self, event):
         player = self.mapW.game.player
-        self.hireTroops(self.hireCavB, player.hire_cav, "cav_price")
+        self.hireTroops(player.hire_cav, "cav_price")
 
     def hireInf(self, event):
         player = self.mapW.game.player
-        self.hireTroops(self.hireInfB, player.hire_inf, "inf_price")
+        self.hireTroops(player.hire_inf, "inf_price")
 
-    def hireTroops(self, button, hireF, troopPrice):
+    def hireTroops(self, hireF, troopPrice):
+        '''
+        Hires troops on the current territory. hireF is the function for
+        hiring the troops.
+        '''
         player = self.mapW.game.player
         ter = self.square.ter
         army = hireF(ter.x, ter.y)
@@ -601,11 +720,14 @@ class TerritoryDialog(QDialog):
             asq.show()
             asq.raise_()
         self.updateEnables()
-        self.mapW.tf.goldChanged.emit(player.gold)
+        self.mapW.sig.goldChanged.emit(player.gold)
         maint = player.get_armies_maint()
-        self.mapW.tf.maintChanged.emit(maint[0] + maint[1])
+        self.mapW.sig.maintChanged.emit(maint[0] + maint[1])
 
     def updateEnables(self):
+        '''
+        Updates the enables of the buttons in the territory dialog.
+        '''
         player = self.mapW.game.player
         ter = self.square.ter
         sieged = ter.is_sieged()
@@ -617,6 +739,9 @@ class TerritoryDialog(QDialog):
 
 
 class ArmySquare(QFrame):
+    '''
+    Frame for the armies in the GUI.
+    '''
     def __init__(self, parent, army, pt):
         super().__init__(parent)
         self.army = army
@@ -630,6 +755,9 @@ class ArmySquare(QFrame):
         self.mouseReleaseEvent = self.moveArmy
 
     def moveArmy(self, event):
+        '''
+        Method for moving the army.
+        '''
         x = event.globalX()
         y = event.globalY()
         square = self.parent().childAt(x, y)
@@ -648,15 +776,15 @@ class ArmySquare(QFrame):
             pt = square.center
             if isinstance(self.parent().childAt(pt[0], pt[1]), ArmySquare):
                 self.engage(self.parent().childAt(pt[0], pt[1]), square.ter)
-                canMove = self.army.morale > 0
+                canMove = self.army.morale > 0 and not self.army.killed()
             else:
                 square.ter.siege(self.army.owner)
-            if canMove:
+            prevSquare = self.parent().childAt(prevPos)
+            if canMove:  # the army is not killed and we can move it
                 self.move(pt[0] - self.a / 2, pt[1] - self.a / 2)
                 self.army.move(square.ter.x, square.ter.y)
                 self.raise_()
-                prevSquare = self.parent().childAt(prevPos)
-                if change[0] + change[1] == 200:
+                if change[0] + change[1] == 200:  # whole army is moved
                     prevSquare.ter.lift_siege(self.army.owner)
                     prevX = prevPos.x()
                     prevY = prevPos.y()
@@ -667,32 +795,54 @@ class ArmySquare(QFrame):
                 prevX = prevPos.x()
                 prevY = prevPos.y()
                 armyLeft = self.parent().childAt(prevX - self.a, prevY)
+                if not isinstance(armyLeft, ArmySquare):
+                    return None
                 armyLeft.army.join(self.army)
+                if armyLeft.army.killed():
+                    self.parent().armies.remove(armyLeft)
+                    armyLeft.close()
+                    prevSquare.ter.lift_siege(armyLeft.army.owner)
                 self.parent().armies.remove(self)
+            else:  # whole army is moved and killed
+                prevSquare.ter.lift_siege(self.army.owner)
 
     def splitArmy(self, change):
-        if change[0] == 99:
+        '''
+        Method to split the army in two separate armies on diffetent
+        locations.
+        '''
+        if change[0] == 99:  # max percentage selected
             change[0] = 100
         if change[1] == 99:
             change[1] = 100
         if change[0] + change[1] < 200:
             infA = self.army.troops[0].ammount * change[0] // 100
             cavA = self.army.troops[1].ammount * change[1] // 100
-            pt = self.parent().childAt(self.x() + self.a, self.y()).center
+            ter_square = self.parent().childAt(self.x() + self.a, self.y())
+            pt = ter_square.center
             army = self.army.split((infA, cavA))
             if not army.killed():
                 armyLeft = ArmySquare(self.parent(), army, pt)
                 armyLeft.raise_()
                 armyLeft.show()
                 self.parent().armies.append(armyLeft)
+            else:
+                ter_square.ter.lift_siege(self.army.owner)
 
     def clicked(self):
+        '''
+        Army square is clicked -> show army dialog.
+        '''
         dialog = ArmyDialog(self.army)
-        dialog.setWindowTitle("Army name here")
+        dialog.setWindowTitle(self.army.owner.name)
         dialog.setFixedSize(280, 200)
         dialog.exec_()
 
     def openMoveDialog(self, change):
+        '''
+        Opens the dialog in which the player selects how many percents
+        of each unit he wants to move.
+        '''
         moveDialog = MoveArmyDialog(self.army)
         moveDialog.setWindowTitle("Choose army ammount")
         moveDialog.setFixedSize(280, 200)
@@ -709,10 +859,14 @@ class ArmySquare(QFrame):
         if other.army.killed():
             other.close()
         maint = self.parent().game.player.get_armies_maint()
-        self.parent().tf.maintChanged.emit(maint[0] + maint[1])
+        self.parent().sig.maintChanged.emit(maint[0] + maint[1])
 
 
 class ArmyDialog(QDialog):
+    '''
+    Dialog shown when the army square is clicked. Contains information
+    about the armies stats.
+    '''
     def __init__(self, army):
         super().__init__()
         self.addLabels(army.troops[0], "Infantry", 0)
@@ -755,6 +909,11 @@ class ArmyDialog(QDialog):
 
 
 class MoveArmyDialog(QDialog):
+    '''
+    Dialog opened when the player tries to move an army.
+    Lets the player choose how many percents of each unit he desires
+    to move.
+    '''
     def __init__(self, army):
         super().__init__()
         self.addLabels()

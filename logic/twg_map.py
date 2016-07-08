@@ -3,6 +3,12 @@ import itertools
 
 
 class Buildings:
+    '''
+    Buildings class for buildings in a territory.
+    For now just fort and market. Can be expanded to multiple derrived classes
+    if more buildings added.
+    '''
+
     MARKET_INCOME = 3
     MARKET_COST = 15
     FORT_COST = 20
@@ -57,12 +63,25 @@ class Territory:
         self.buildings.fort_lvl = self.buildings.fort_lvl + 1
 
     def siege(self, player):
-        if not self.siege_leader and self.owner is not player:
+        '''
+        Player player sieges the territory if possible.
+        '''
+        not_ally = self.owner not in player.allies
+        if not self.siege_leader and self.owner is not player and not_ally:
             self.siege_leader = player
             self.capture_time = self.BASE_CAP_TIME + self.buildings.fort_lvl
 
     def proceed_siege(self):
+        '''
+        Decreases the siege timer if the siege is still going on.
+        '''
         if self.siege_leader:
+            sieged = False
+            for army in self.siege_leader.armies:
+                if army.pos_x == self.x and army.pos_y == self.y:
+                    sieged = True
+            if not sieged:
+                self.lift_siege(self.siege_leader)
             self.capture_time = self.capture_time - 1
             if self.capture_time == 0:
                 self.surrender()
@@ -75,6 +94,9 @@ class Territory:
         self.owner.territories.append(self)
 
     def lift_siege(self, player):
+        '''
+        Stops the siege with player if it is possible.
+        '''
         if player is self.siege_leader:
             self.siege_leader = None
             self.capture_time = 0
@@ -90,6 +112,9 @@ class Map:
         self.generate_map()
 
     def generate_map(self):
+        '''
+        Generates the map. Players' territories are picked randomly.
+        '''
         self.map = []
         temp_coords = []
         for i in range(self.dim):
@@ -106,8 +131,3 @@ class Map:
             cur_y = temp_coords[i][1]
             self.map[cur_x][cur_y].owner = self.players[i]
             self.players[i].territories.append(self.map[cur_x][cur_y])
-#        self.map[1][1].owner = self.players[0] # for tests
-#        for i in range(2, len(self.players)):
-#        self.players[0].territories.append(self.map[1][1])
-#        self.map[1][2].owner = self.players[1]
-#        self.players[1].territories.append(self.map[1][2])
