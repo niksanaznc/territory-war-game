@@ -59,7 +59,7 @@ class MapWindow(QWidget):
         Method to end the current player's turn and refresh all
         the interface to show the next active player's info.
         '''
-        self.game.player.end_turn = True
+        self.game.player.end_turn.release()
         time.sleep(1)
         self.sig.turnChanged.emit(self.game.turn)
         self.player.setText(self.game.player.name)
@@ -301,7 +301,7 @@ class MapWindow(QWidget):
     def quit(self):
         self.game.turn = -1
         for player in self.game.players:
-            player.end_turn = True
+            player.end_turn.release()
         time.sleep(1)
         self.close()
 

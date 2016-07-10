@@ -1,4 +1,5 @@
 from logic.twg_army import Army, Cavlary, Infantry
+from threading import Semaphore
 
 
 class Player:
@@ -14,7 +15,7 @@ class Player:
         self.gold = self.STARTING_GOLD
         self.color = color
         self.active = False
-        self.end_turn = False
+        self.end_turn = Semaphore(0)
         self.inf_stats = (1, 5, 1000, 5)  # AD#M
         self.cav_stats = (2, 2, 1000, 5)
         self.inf_price = 4
@@ -22,8 +23,7 @@ class Player:
 
     def play_turn(self):
         self.active = True
-        while not self.end_turn:
-            pass
+        self.end_turn.acquire()
         self.active = False
 
     def get_income(self):
@@ -97,7 +97,7 @@ class Player:
         for army in self.armies:
             army.moved = False
             army.recover_morale()
-        self.end_turn = False
+        #self.end_turn = False
 
     def is_active(self):
         return self.active
